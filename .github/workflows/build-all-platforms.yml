@@ -1,0 +1,48 @@
+name: Build Cross-Platform (Windows, macOS, Linux)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Web Assets
+        run: npm run build
+
+      - name: Build Windows Executables
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win nsis appx
+
+      - name: Build macOS Executable (.dmg / .zip)
+        if: matrix.os == 'macos-latest'
+        run: npx electron-builder --mac dmg zip
+
+      - name: Build Linux Executable (AppImage / deb)
+        if: matrix.os == 'ubuntu-latest'
+        run: npx electron-builder --linux AppImage deb
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrganJob-${{ matrix.os }}
+          path: release/*.*

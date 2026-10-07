@@ -1,0 +1,90 @@
+{
+  "name": "organjob",
+  "productName": "OrganJob",
+  "version": "1.0.0",
+  "description": "Control y gestión de trabajos, proyectos, clientes y tiempo Pomodoro",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "sergio.ortiz@microdatas.com",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "package:exe": "npm run build && electron-builder --win nsis",
+    "package:store": "npm run build && electron-builder --win appx",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb",
+    "package:mac": "npm run build && electron-builder --mac zip dmg",
+    "package:all": "npm run build && electron-builder -mwl"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "lucide-react": "^1.16.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.7.1",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.organjob.app",
+    "productName": "OrganJob",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "appx"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OrganJob"
+    },
+    "appx": {
+      "identityName": "OrganJob.App",
+      "publisher": "CN=YourPublisherID",
+      "publisherDisplayName": "OrganJob Developer",
+      "displayName": "OrganJob Pro",
+      "backgroundColor": "#18191c"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "zip",
+        "dmg"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png"
+    }
+  }
+}
