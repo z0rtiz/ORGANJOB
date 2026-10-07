@@ -5,7 +5,10 @@
   "description": "Control y gestión de trabajos, proyectos, clientes y tiempo Pomodoro",
   "type": "module",
   "main": "electron/main.cjs",
-  "author": "sergio.ortiz@microdatas.com",
+  "author": {
+    "name": "Sergio Ortiz",
+    "email": "sergio.ortiz@microdatas.com"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -71,6 +74,7 @@
       "backgroundColor": "#18191c"
     },
     "linux": {
+      "maintainer": "Sergio Ortiz <sergio.ortiz@microdatas.com>",
       "target": [
         "AppImage",
         "deb"

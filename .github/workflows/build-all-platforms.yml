@@ -33,19 +33,19 @@ jobs:
         if: matrix.os == 'windows-latest'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win nsis
+        run: npx electron-builder --win nsis --publish never
 
       - name: Build macOS Executable (.dmg / .zip)
         if: matrix.os == 'macos-latest'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac dmg zip
+        run: npx electron-builder --mac dmg zip --publish never
 
       - name: Build Linux Executable (AppImage / deb)
         if: matrix.os == 'ubuntu-latest'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --linux AppImage deb
+        run: npx electron-builder --linux AppImage deb --publish never
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
