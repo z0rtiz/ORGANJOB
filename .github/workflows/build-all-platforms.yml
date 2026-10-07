@@ -39,7 +39,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac dmg zip --publish never
+        run: npx electron-builder --mac dmg zip --universal --publish never
 
       - name: Build Linux Executable (AppImage / deb)
         if: matrix.os == 'ubuntu-latest'

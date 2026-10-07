@@ -18,7 +18,7 @@
     "package:exe": "npm run build && electron-builder --win nsis",
     "package:store": "npm run build && electron-builder --win appx",
     "package:linux": "npm run build && electron-builder --linux AppImage deb",
-    "package:mac": "npm run build && electron-builder --mac zip dmg",
+    "package:mac": "npm run build && electron-builder --mac zip dmg --universal",
     "package:all": "npm run build && electron-builder -mwl"
   },
   "dependencies": {
@@ -84,8 +84,18 @@
     },
     "mac": {
       "target": [
-        "zip",
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
       "category": "public.app-category.productivity",
       "icon": "build/icon.png"
