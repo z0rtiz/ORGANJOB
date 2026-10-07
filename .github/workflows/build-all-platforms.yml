@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
@@ -21,28 +22,39 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Web Assets
         run: npm run build
 
-      - name: Build Windows Executables
+      - name: Build Windows Executable (.exe)
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win nsis appx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis
 
       - name: Build macOS Executable (.dmg / .zip)
         if: matrix.os == 'macos-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --mac dmg zip
 
       - name: Build Linux Executable (AppImage / deb)
         if: matrix.os == 'ubuntu-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --linux AppImage deb
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: OrganJob-${{ matrix.os }}
-          path: release/*.*
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: warn
