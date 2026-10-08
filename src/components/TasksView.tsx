@@ -619,6 +619,63 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 </div>
               </div>
 
+              {/* Spent time adjustment */}
+              <div style={{
+                background: 'var(--bg-surface-elevated)',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    Tiempo Real Registrado en esta Tarea
+                  </label>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
+                    {formatSpentTime(editingTask.spentSeconds || 0)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTask({ ...editingTask, spentSeconds: (editingTask.spentSeconds || 0) + 15 * 60 })}
+                    className="fluent-btn fluent-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                  >
+                    +15 min
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTask({ ...editingTask, spentSeconds: (editingTask.spentSeconds || 0) + 30 * 60 })}
+                    className="fluent-btn fluent-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                  >
+                    +30 min
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTask({ ...editingTask, spentSeconds: (editingTask.spentSeconds || 0) + 60 * 60 })}
+                    className="fluent-btn fluent-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                  >
+                    +1 hora
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const mins = prompt('Ingresa los minutos totales trabajados en esta tarea:', String(Math.round((editingTask.spentSeconds || 0) / 60)));
+                      if (mins !== null) {
+                        const val = Math.max(0, Number(mins) || 0);
+                        setEditingTask({ ...editingTask, spentSeconds: val * 60 });
+                      }
+                    }}
+                    className="fluent-btn fluent-btn-ghost"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem', textDecoration: 'underline' }}
+                  >
+                    Ajustar minutos
+                  </button>
+                </div>
+              </div>
+
               {/* Subtasks / Checklist */}
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>

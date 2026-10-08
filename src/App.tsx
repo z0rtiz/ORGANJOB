@@ -54,6 +54,30 @@ export const App: React.FC = () => {
     setCompletedPomodorosToday(count);
   }, [data.timeLogs]);
 
+  // Commit any elapsed seconds in the current session immediately to a TimeLog
+  const commitCurrentSession = (targetTaskId = activeTaskId) => {
+    const elapsed = sessionSecondsRef.current;
+    if (elapsed >= 5 && targetTaskId) {
+      const activeTask = data.tasks.find((t) => t.id === targetTaskId);
+      const now = new Date();
+      const newLog: TimeLog = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        taskId: targetTaskId,
+        projectId: activeTask?.projectId || (data.projects[0]?.id ?? 'internal'),
+        durationSeconds: elapsed,
+        startedAt: new Date(now.getTime() - elapsed * 1000).toISOString(),
+        endedAt: now.toISOString(),
+        type: 'pomodoro',
+        notes: activeTask ? `Sesión en: ${activeTask.title}` : 'Sesión de enfoque',
+      };
+      setData((prev) => ({
+        ...prev,
+        timeLogs: [newLog, ...prev.timeLogs],
+      }));
+      sessionSecondsRef.current = 0;
+    }
+  };
+
   // Global Pomodoro Timer Interval Engine
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -76,6 +100,11 @@ export const App: React.FC = () => {
                 t.id === activeTaskId ? { ...t, spentSeconds: (t.spentSeconds || 0) + 1 } : t
               ),
             }));
+
+            // Auto-commit every 60 seconds of focused work
+            if (sessionSecondsRef.current >= 60) {
+              commitCurrentSession(activeTaskId);
+            }
           }
 
           return prev - 1;
@@ -96,7 +125,6 @@ export const App: React.FC = () => {
     }
 
     if (pomodoroMode === 'work') {
-      // Completed work session
       confetti({
         particleCount: 80,
         spread: 70,
@@ -108,23 +136,8 @@ export const App: React.FC = () => {
         'Excelente trabajo. Tómate unos minutos de descanso.'
       );
 
-      // Create TimeLog
-      const activeTask = data.tasks.find((t) => t.id === activeTaskId);
-      const newLog: TimeLog = {
-        id: `log-${Date.now()}`,
-        taskId: activeTaskId || 'unassigned',
-        projectId: activeTask?.projectId || (data.projects[0]?.id ?? 'internal'),
-        durationSeconds: data.pomodoroSettings.workDuration * 60,
-        startedAt: new Date(Date.now() - data.pomodoroSettings.workDuration * 60000).toISOString(),
-        endedAt: new Date().toISOString(),
-        type: 'pomodoro',
-        notes: activeTask ? `Pomodoro en: ${activeTask.title}` : 'Sesión de enfoque general',
-      };
-
-      setData((prev) => ({
-        ...prev,
-        timeLogs: [newLog, ...prev.timeLogs],
-      }));
+      // Commit remaining seconds
+      commitCurrentSession();
 
       const newCount = completedPomodorosToday + 1;
       setCompletedPomodorosToday(newCount);
@@ -138,7 +151,6 @@ export const App: React.FC = () => {
         setPomodoroTimeLeft(data.pomodoroSettings.shortBreakDuration * 60);
       }
     } else {
-      // Completed break
       requestDesktopNotification(
         '¡Descanso terminado! ⚡',
         '¿Listo para una nueva sesión de enfoque?'
@@ -149,10 +161,17 @@ export const App: React.FC = () => {
   };
 
   const handleTogglePomodoro = () => {
+    if (isPomodoroRunning) {
+      // User pauses -> commit session seconds immediately to logs
+      commitCurrentSession();
+    }
     setIsPomodoroRunning((prev) => !prev);
   };
 
   const handleResetPomodoro = () => {
+    if (isPomodoroRunning) {
+      commitCurrentSession();
+    }
     setIsPomodoroRunning(false);
     switch (pomodoroMode) {
       case 'work':
@@ -168,6 +187,9 @@ export const App: React.FC = () => {
   };
 
   const handleSwitchPomodoroMode = (mode: PomodoroMode) => {
+    if (isPomodoroRunning) {
+      commitCurrentSession();
+    }
     setIsPomodoroRunning(false);
     setPomodoroMode(mode);
     switch (mode) {
@@ -184,6 +206,9 @@ export const App: React.FC = () => {
   };
 
   const handleStartPomodoroForTask = (taskId: string) => {
+    if (isPomodoroRunning && activeTaskId !== taskId) {
+      commitCurrentSession();
+    }
     setActiveTaskId(taskId);
     setPomodoroMode('work');
     setPomodoroTimeLeft(data.pomodoroSettings.workDuration * 60);

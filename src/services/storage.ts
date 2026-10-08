@@ -153,6 +153,44 @@ const initialSampleData: AppData = {
   theme: 'dark',
 };
 
+export const reconcileTaskTimeLogs = (data: AppData): AppData => {
+  const existingLogs = [...data.timeLogs];
+  let hasNewLogs = false;
+
+  data.tasks.forEach((task) => {
+    if (task.spentSeconds && task.spentSeconds > 0) {
+      const loggedSeconds = existingLogs
+        .filter((l) => l.taskId === task.id)
+        .reduce((sum, l) => sum + l.durationSeconds, 0);
+
+      const unloggedSeconds = task.spentSeconds - loggedSeconds;
+      if (unloggedSeconds > 10) {
+        // Create reconciling log so statistics reflect all spent time immediately
+        const taskDate = task.completedAt || task.dueDate || task.createdAt || new Date().toISOString();
+        const newLog: TimeLog = {
+          id: `log-sync-${task.id}-${Date.now()}`,
+          taskId: task.id,
+          projectId: task.projectId,
+          durationSeconds: unloggedSeconds,
+          startedAt: taskDate,
+          endedAt: new Date(new Date(taskDate).getTime() + unloggedSeconds * 1000).toISOString(),
+          type: 'manual',
+          notes: `Tiempo trabajado en: ${task.title}`,
+        };
+        existingLogs.unshift(newLog);
+        hasNewLogs = true;
+      }
+    }
+  });
+
+  if (hasNewLogs) {
+    const updated = { ...data, timeLogs: existingLogs };
+    saveAppData(updated);
+    return updated;
+  }
+  return data;
+};
+
 export const loadAppData = (): AppData => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -161,7 +199,7 @@ export const loadAppData = (): AppData => {
       return initialSampleData;
     }
     const parsed = JSON.parse(raw);
-    return {
+    const loadedData: AppData = {
       clients: parsed.clients || [],
       projects: parsed.projects || [],
       tasks: parsed.tasks || [],
@@ -169,6 +207,7 @@ export const loadAppData = (): AppData => {
       pomodoroSettings: { ...defaultPomodoroSettings, ...(parsed.pomodoroSettings || {}) },
       theme: parsed.theme || 'dark',
     };
+    return reconcileTaskTimeLogs(loadedData);
   } catch (error) {
     console.error('Error loading data from localStorage, using defaults', error);
     return initialSampleData;

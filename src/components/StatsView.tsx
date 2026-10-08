@@ -20,10 +20,52 @@ interface StatsViewProps {
 export const StatsView: React.FC<StatsViewProps> = ({ data }) => {
   const { timeLogs, tasks, projects, clients } = data;
 
-  // Time calculations
+  // Helper to get local YYYY-MM-DD
+  const getLocalDateKey = (dateInput: string | Date | number): string => {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Reconcile in-memory: if tasks have spentSeconds that weren't yet logged, include them as effective logs
+  const effectiveLogs = [...timeLogs];
+  tasks.forEach((task) => {
+    if (task.spentSeconds && task.spentSeconds > 0) {
+      const loggedSeconds = timeLogs
+        .filter((l) => l.taskId === task.id)
+        .reduce((sum, l) => sum + l.durationSeconds, 0);
+
+      const unlogged = task.spentSeconds - loggedSeconds;
+      if (unlogged > 10) {
+        const d = task.completedAt || task.dueDate || task.createdAt || new Date().toISOString();
+        effectiveLogs.push({
+          id: `eff-${task.id}`,
+          taskId: task.id,
+          projectId: task.projectId,
+          durationSeconds: unlogged,
+          startedAt: d,
+          endedAt: new Date(new Date(d).getTime() + unlogged * 1000).toISOString(),
+          type: 'manual',
+          notes: task.title,
+        });
+      }
+    }
+  });
+
+  // Time calculations using local dates
   const now = new Date();
+  const todayKey = getLocalDateKey(now);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime();
+  
+  // Start of week (Monday)
+  const currentDayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday...
+  const distanceToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distanceToMonday).getTime();
+  
+  // Start of month
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
   let secondsToday = 0;
@@ -31,9 +73,11 @@ export const StatsView: React.FC<StatsViewProps> = ({ data }) => {
   let secondsThisMonth = 0;
   let pomodorosToday = 0;
 
-  timeLogs.forEach(log => {
+  effectiveLogs.forEach(log => {
     const logTime = new Date(log.startedAt).getTime();
-    if (logTime >= startOfToday) {
+    const logDateKey = getLocalDateKey(log.startedAt);
+
+    if (logDateKey === todayKey || logTime >= startOfToday) {
       secondsToday += log.durationSeconds;
       if (log.type === 'pomodoro') pomodorosToday += 1;
     }
@@ -49,19 +93,18 @@ export const StatsView: React.FC<StatsViewProps> = ({ data }) => {
   const completedTasks = tasks.filter(t => t.completed).length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  // Last 7 days breakdown for SVG Bar Chart
+  // Last 7 days breakdown for SVG Bar Chart (using local day keys)
   const daysData = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const dayStr = d.toISOString().split('T')[0];
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i));
+    const targetKey = getLocalDateKey(d);
     const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'short' });
 
-    const totalDaySeconds = timeLogs
-      .filter(l => l.startedAt.startsWith(dayStr))
+    const totalDaySeconds = effectiveLogs
+      .filter(l => getLocalDateKey(l.startedAt) === targetKey)
       .reduce((acc, l) => acc + l.durationSeconds, 0);
 
     return {
-      date: dayStr,
+      date: targetKey,
       label: dayLabel.toUpperCase(),
       hours: Number((totalDaySeconds / 3600).toFixed(2)),
     };
@@ -72,29 +115,32 @@ export const StatsView: React.FC<StatsViewProps> = ({ data }) => {
   // Time by Project breakdown
   const projectMap = new Map(projects.map(p => [p.id, p]));
   const projectTimeMap: Record<string, number> = {};
-  timeLogs.forEach(log => {
+  
+  effectiveLogs.forEach(log => {
     projectTimeMap[log.projectId] = (projectTimeMap[log.projectId] || 0) + log.durationSeconds;
   });
 
   const totalLoggedSeconds = Object.values(projectTimeMap).reduce((a, b) => a + b, 0);
 
-  const projectDistribution = Object.entries(projectTimeMap)
-    .map(([projId, secs]) => {
-      const proj = projectMap.get(projId);
+  const projectDistribution = projects
+    .map(proj => {
+      const secs = projectTimeMap[proj.id] || 0;
       return {
-        id: projId,
-        name: proj?.name || 'Proyecto no especificado',
-        color: proj?.color || '#0078D4',
+        id: proj.id,
+        name: proj.name,
+        color: proj.color,
         hours: Number((secs / 3600).toFixed(1)),
         percent: totalLoggedSeconds > 0 ? Math.round((secs / totalLoggedSeconds) * 100) : 0,
       };
     })
+    .filter(item => item.hours > 0)
     .sort((a, b) => b.hours - a.hours);
 
   // Time by Client breakdown
   const clientMap = new Map(clients.map(c => [c.id, c]));
   const clientTimeMap: Record<string, number> = {};
-  timeLogs.forEach(log => {
+  
+  effectiveLogs.forEach(log => {
     const proj = projectMap.get(log.projectId);
     const clientId = proj?.clientId || 'internal';
     clientTimeMap[clientId] = (clientTimeMap[clientId] || 0) + log.durationSeconds;
@@ -337,13 +383,13 @@ export const StatsView: React.FC<StatsViewProps> = ({ data }) => {
           </p>
 
           <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-            {timeLogs.length === 0 ? (
+            {effectiveLogs.length === 0 ? (
               <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px' }}>
                 Sin registros de tiempo aún.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {timeLogs.slice(-6).reverse().map(log => {
+                {effectiveLogs.slice(-8).reverse().map(log => {
                   const proj = projectMap.get(log.projectId);
                   const task = tasks.find(t => t.id === log.taskId);
                   const minutes = Math.round(log.durationSeconds / 60);
